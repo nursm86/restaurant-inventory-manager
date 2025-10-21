@@ -888,9 +888,17 @@ class RIM_Ajax {
 		$where  = 'WHERE 1=1';
 		$params = array();
 
-		$where .= ' AND t.transaction_date BETWEEN %s AND %s';
-		$params[] = $range['start'];
-		$params[] = $range['end'];
+		if ( $range['start'] && $range['end'] ) {
+			$where     .= ' AND t.transaction_date BETWEEN %s AND %s';
+			$params[]   = $range['start'];
+			$params[]   = $range['end'];
+		} elseif ( $range['start'] ) {
+			$where     .= ' AND t.transaction_date >= %s';
+			$params[]   = $range['start'];
+		} elseif ( $range['end'] ) {
+			$where     .= ' AND t.transaction_date <= %s';
+			$params[]   = $range['end'];
+		}
 
 		if ( $material ) {
 			$where    .= ' AND t.material_id = %d';
@@ -946,20 +954,33 @@ class RIM_Ajax {
 	 * @return array
 	 */
 	protected function normalize_date_range( $start, $end ) {
-		$current    = current_time( 'timestamp' );
-		$default_end = wp_date( 'Y-m-d H:i:s', $current );
-		$default_start = wp_date( 'Y-m-d H:i:s', $current - WEEK_IN_SECONDS );
+		$raw_start = trim( (string) $start );
+		$raw_end   = trim( (string) $end );
 
-		if ( empty( $start ) ) {
-			$start = $default_start;
+		$start_date = null;
+		$end_date   = null;
+
+		if ( '' !== $raw_start ) {
+			$timestamp = strtotime( $raw_start );
+			if ( false !== $timestamp ) {
+				$start_date = wp_date(
+					preg_match( '/^\d{4}-\d{2}-\d{2}$/', $raw_start ) ? 'Y-m-d 00:00:00' : 'Y-m-d H:i:s',
+					$timestamp
+				);
+			}
 		}
 
-		if ( empty( $end ) ) {
-			$end = $default_end;
+		if ( '' !== $raw_end ) {
+			$timestamp = strtotime( $raw_end );
+			if ( false !== $timestamp ) {
+				$format   = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $raw_end ) ? 'Y-m-d 23:59:59' : 'Y-m-d H:i:s';
+				$end_date = wp_date( $format, $timestamp );
+			}
 		}
 
-		$start_date = $this->parse_datetime( $start );
-		$end_date   = $this->parse_datetime( $end );
+		if ( $start_date && $end_date && strtotime( $start_date ) > strtotime( $end_date ) ) {
+			$end_date = $start_date;
+		}
 
 		return array(
 			'start' => $start_date,

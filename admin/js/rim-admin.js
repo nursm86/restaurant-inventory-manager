@@ -590,15 +590,15 @@
 					return;
 				}
 
-				this.table = $('#rim-transactions-table').DataTable({
-					serverSide: true,
-					processing: true,
-					order: [[6, 'desc']],
-					searching: false,
-					ajax(data, callback) {
-						component.fetchTransactions(data, callback);
-					},
-					columns: [
+			this.table = $('#rim-transactions-table').DataTable({
+				serverSide: true,
+				processing: true,
+				order: [[6, 'desc']],
+				searching: false,
+				ajax(data, callback) {
+					component.fetchTransactions(data, callback);
+				},
+				columns: [
 						{ data: 'material_name', render: (data) => RIM.escapeHtml(data || '') },
 						{
 							data: 'type',
@@ -614,9 +614,11 @@
 						{ data: 'reason', render: (data) => RIM.escapeHtml(data || '') },
 						{ data: 'transaction_date', render: (data) => RIM.escapeHtml(data || '') },
 						{ data: 'created_by', render: (data) => RIM.escapeHtml(data || '') },
-					],
-				});
-			},
+				],
+			});
+
+			this.reloadTable();
+		},
 
 			fetchTransactions(dtData, callback) {
 				const payload = {
@@ -629,6 +631,7 @@
 				};
 
 				RIM.request('rim_list_transactions', payload).then((response) => {
+					console.log('Transactions response', response);
 					if (!response.success) {
 						RIM.showToast('error', response.message || window.rimAdminData.i18n.error);
 						callback({
@@ -651,7 +654,7 @@
 
 			reloadTable() {
 				if (this.table) {
-					this.table.ajax.reload();
+					this.table.ajax.reload(null, false);
 				}
 			},
 
@@ -680,18 +683,15 @@
 					payload.reason = '';
 				}
 
-				RIM.request('rim_create_transaction', payload).then((response) => {
-					if (!response.success) {
-						RIM.showToast('error', response.message || window.rimAdminData.i18n.error);
-						return;
-					}
+		RIM.request('rim_create_transaction', payload).then((response) => {
+			console.log('Create transaction response', response);
+			if (!response.success) {
+				RIM.showToast('error', response.message || window.rimAdminData.i18n.error);
+				return;
+			}
 
 					RIM.showToast('success', response.message || window.rimAdminData.i18n.success);
-					if (this.table && response.data.transaction) {
-						this.table.row.add(response.data.transaction).draw(false);
-					} else {
-						this.reloadTable();
-					}
+					this.reloadTable();
 					if (response.data.material) {
 						this.updateMaterialSnapshot(response.data.material);
 					}

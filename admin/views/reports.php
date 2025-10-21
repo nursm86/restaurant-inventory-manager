@@ -51,7 +51,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<span x-show="exportingPurchases"><?php esc_html_e( 'Preparing…', 'restaurant-inventory-manager' ); ?></span>
 			</button>
 		</div>
-		<table class="rim-table">
+		<table class="rim-table wp-list-table widefat striped rim-report-table">
 			<thead>
 				<tr>
 					<th><?php esc_html_e( 'Material', 'restaurant-inventory-manager' ); ?></th>
@@ -70,7 +70,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 					</tr>
 				</template>
 				<tr x-show="purchases.length === 0">
-					<td colspan="4"><?php esc_html_e( 'No purchase data for the selected range.', 'restaurant-inventory-manager' ); ?></td>
+					<td class="rim-report-empty" colspan="4"><?php esc_html_e( 'No purchase data for the selected range.', 'restaurant-inventory-manager' ); ?></td>
 				</tr>
 			</tbody>
 		</table>
@@ -84,7 +84,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<span x-show="exportingUsage"><?php esc_html_e( 'Preparing…', 'restaurant-inventory-manager' ); ?></span>
 			</button>
 		</div>
-		<table class="rim-table">
+		<table class="rim-table wp-list-table widefat striped rim-report-table">
 			<thead>
 				<tr>
 					<th><?php esc_html_e( 'Material', 'restaurant-inventory-manager' ); ?></th>
@@ -101,7 +101,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 					</tr>
 				</template>
 				<tr x-show="usage.length === 0">
-					<td colspan="3"><?php esc_html_e( 'No usage data for the selected range.', 'restaurant-inventory-manager' ); ?></td>
+					<td class="rim-report-empty" colspan="3"><?php esc_html_e( 'No usage data for the selected range.', 'restaurant-inventory-manager' ); ?></td>
 				</tr>
 			</tbody>
 		</table>
