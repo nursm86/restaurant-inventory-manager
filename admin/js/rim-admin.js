@@ -1,9 +1,34 @@
 (function ($, window, document) {
 	'use strict';
 
-	if (typeof window.rimAdminData === 'undefined') {
-		return;
-	}
+	const defaults = {
+		ajaxUrl: window.ajaxurl || '',
+		nonce: '',
+		settings: {
+			units_list: ['pcs'],
+			units: ['pcs'],
+			alertsEnabled: false,
+		},
+		i18n: {
+			success: 'Success',
+			error: 'Error',
+			confirmDelete: 'Are you sure you want to delete this material?',
+			loading: 'Loading…',
+			duplicateMaterial: 'A material with that name already exists.',
+			invalidQuantity: 'Please enter a valid quantity.',
+			negativeStockError: 'Not enough stock available for this operation.',
+			editField: 'Edit value',
+			edit: 'Edit',
+			delete: 'Delete',
+			add: 'Add',
+			use: 'Use',
+		},
+	};
+
+	window.rimAdminData = window.rimAdminData ? Object.assign({}, defaults, window.rimAdminData) : defaults;
+	window.rimAdminData.settings = Object.assign({}, defaults.settings, window.rimAdminData.settings || {});
+	window.rimAdminData.settings.units = window.rimAdminData.settings.units || window.rimAdminData.settings.units_list || ['pcs'];
+	window.rimAdminData.i18n = Object.assign({}, defaults.i18n, window.rimAdminData.i18n || {});
 
 	const { ajaxUrl, nonce } = window.rimAdminData;
 
@@ -123,10 +148,17 @@
 
 			init() {
 				this.initTable();
+				this.syncModalVisibility();
 			},
 
 			initTable() {
 				const component = this;
+
+				if ($.fn.DataTable.isDataTable('#rim-materials-table')) {
+					this.table = $('#rim-materials-table').DataTable();
+					this.table.ajax.reload(null, false);
+					return;
+				}
 
 				this.table = $('#rim-materials-table').DataTable({
 					serverSide: true,
@@ -410,6 +442,7 @@
 				this.resetForm();
 				this.isEditing = false;
 				this.showModal = true;
+				this.syncModalVisibility();
 				document.body.classList.add('rim-modal-open');
 			},
 
@@ -417,6 +450,7 @@
 				this.units = window.rimAdminData.settings.units || this.units;
 				this.isEditing = true;
 				this.showModal = true;
+				this.syncModalVisibility();
 				document.body.classList.add('rim-modal-open');
 
 				this.form = {
@@ -432,6 +466,7 @@
 
 			closeModal() {
 				this.showModal = false;
+				this.syncModalVisibility();
 				document.body.classList.remove('rim-modal-open');
 			},
 
@@ -446,6 +481,16 @@
 					supplier: '',
 					price: '',
 				};
+			},
+
+			syncModalVisibility() {
+				if (this.$refs && this.$refs.materialModal) {
+					if (this.showModal) {
+						this.$refs.materialModal.classList.add('is-visible');
+					} else {
+						this.$refs.materialModal.classList.remove('is-visible');
+					}
+				}
 			},
 
 			submitMaterial() {
@@ -519,6 +564,7 @@
 			},
 
 			init() {
+				this.resetForm();
 				this.loadMaterials().then(() => {
 					this.initTable();
 				});
@@ -531,12 +577,19 @@
 				}).then((response) => {
 					if (response.success) {
 						this.materials = response.data.items || [];
+						this.handleMaterialChange();
 					}
 				});
 			},
 
 			initTable() {
 				const component = this;
+				if ($.fn.DataTable.isDataTable('#rim-transactions-table')) {
+					this.table = $('#rim-transactions-table').DataTable();
+					this.table.ajax.reload(null, false);
+					return;
+				}
+
 				this.table = $('#rim-transactions-table').DataTable({
 					serverSide: true,
 					processing: true,
@@ -616,6 +669,10 @@
 				this.submitting = true;
 				const payload = Object.assign({}, this.form);
 
+				if (!payload.transaction_date) {
+					payload.transaction_date = this.formatDateTimeLocal();
+				}
+
 				if (payload.type === 'use') {
 					payload.price = '';
 					payload.supplier = '';
@@ -630,7 +687,14 @@
 					}
 
 					RIM.showToast('success', response.message || window.rimAdminData.i18n.success);
-					this.reloadTable();
+					if (this.table && response.data.transaction) {
+						this.table.row.add(response.data.transaction).draw(false);
+					} else {
+						this.reloadTable();
+					}
+					if (response.data.material) {
+						this.updateMaterialSnapshot(response.data.material);
+					}
 					this.resetForm();
 				}).finally(() => {
 					this.submitting = false;
@@ -645,8 +709,46 @@
 					price: '',
 					supplier: '',
 					reason: '',
-					transaction_date: '',
+					transaction_date: this.formatDateTimeLocal(),
 				};
+			},
+
+			formatDateTimeLocal(dateArg) {
+				const date = dateArg ? new Date(dateArg) : new Date();
+				const pad = (value) => String(value).padStart(2, '0');
+				const year = date.getFullYear();
+				const month = pad(date.getMonth() + 1);
+				const day = pad(date.getDate());
+				const hours = pad(date.getHours());
+				const minutes = pad(date.getMinutes());
+				return `${year}-${month}-${day}T${hours}:${minutes}`;
+			},
+
+			handleMaterialChange() {
+				const selectedId = this.form.material_id;
+				if (!selectedId) {
+					return;
+				}
+
+				const selected = this.materials.find((material) => String(material.id) === String(selectedId));
+				if (!selected) {
+					return;
+				}
+
+				if (selected.supplier) {
+					this.form.supplier = selected.supplier;
+				}
+
+				if (typeof selected.price !== 'undefined' && selected.price !== null) {
+					this.form.price = selected.price;
+				}
+			},
+
+			updateMaterialSnapshot(updatedMaterial) {
+				const index = this.materials.findIndex((item) => Number(item.id) === Number(updatedMaterial.id));
+				if (index !== -1) {
+					this.materials.splice(index, 1, Object.assign({}, this.materials[index], updatedMaterial));
+				}
 			},
 
 			exportCsv() {

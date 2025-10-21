@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<div class="rim-grid">
 				<div class="rim-field">
 					<label for="rim-transaction-material"><?php esc_html_e( 'Material', 'restaurant-inventory-manager' ); ?> <span class="rim-required">*</span></label>
-					<select id="rim-transaction-material" x-model="form.material_id" required>
+					<select id="rim-transaction-material" x-model="form.material_id" x-on:change="handleMaterialChange" required>
 						<option value=""><?php esc_html_e( 'Select material', 'restaurant-inventory-manager' ); ?></option>
 						<template x-for="material in materials" :key="material.id">
 							<option :value="material.id" x-text="material.name"></option>

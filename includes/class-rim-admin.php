@@ -15,13 +15,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 class RIM_Admin {
 
 	/**
-	 * Stores registered page hook suffixes.
-	 *
-	 * @var array
-	 */
-	protected $page_hooks = array();
-
-	/**
 	 * Bootstraps hooks.
 	 *
 	 * @return void
@@ -44,7 +37,7 @@ class RIM_Admin {
 
 		$capability = rim_get_manage_capability();
 
-		$this->page_hooks[] = add_menu_page(
+		add_menu_page(
 			__( 'Restaurant Inventory', 'restaurant-inventory-manager' ),
 			__( 'Restaurant Inventory', 'restaurant-inventory-manager' ),
 			$capability,
@@ -54,7 +47,7 @@ class RIM_Admin {
 			58
 		);
 
-		$this->page_hooks[] = add_submenu_page(
+		add_submenu_page(
 			'rim-raw-materials',
 			__( 'Raw Materials', 'restaurant-inventory-manager' ),
 			__( 'Raw Materials', 'restaurant-inventory-manager' ),
@@ -63,7 +56,7 @@ class RIM_Admin {
 			array( $this, 'render_raw_materials' )
 		);
 
-		$this->page_hooks[] = add_submenu_page(
+		add_submenu_page(
 			'rim-raw-materials',
 			__( 'Stock Transactions', 'restaurant-inventory-manager' ),
 			__( 'Stock Transactions', 'restaurant-inventory-manager' ),
@@ -72,7 +65,7 @@ class RIM_Admin {
 			array( $this, 'render_stock_transactions' )
 		);
 
-		$this->page_hooks[] = add_submenu_page(
+		add_submenu_page(
 			'rim-raw-materials',
 			__( 'Reports', 'restaurant-inventory-manager' ),
 			__( 'Reports', 'restaurant-inventory-manager' ),
@@ -81,7 +74,7 @@ class RIM_Admin {
 			array( $this, 'render_reports' )
 		);
 
-		$this->page_hooks[] = add_submenu_page(
+		add_submenu_page(
 			'rim-raw-materials',
 			__( 'Settings', 'restaurant-inventory-manager' ),
 			__( 'Settings', 'restaurant-inventory-manager' ),
@@ -98,58 +91,68 @@ class RIM_Admin {
 	 * @return void
 	 */
 	public function enqueue_assets( $hook ) {
-		if ( ! $this->is_plugin_screen( $hook ) ) {
+		$page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		if ( 0 !== strpos( $page, 'rim-' ) ) {
 			return;
 		}
 
-		$settings = rim_get_settings();
+		$settings    = rim_get_settings();
+		$vendor_dir  = trailingslashit( RIM_PLUGIN_DIR . 'admin/vendor' );
+		$vendor_url  = trailingslashit( RIM_PLUGIN_URL . 'admin/vendor' );
+		$style_deps  = array();
+		$script_deps = array( 'jquery' );
 
-		wp_enqueue_style(
-			'rim-tailwind',
-			'https://cdn.jsdelivr.net/npm/tailwindcss@3.4.4/dist/tailwind.min.css',
-			array(),
-			'3.4.4'
-		);
-
-		wp_enqueue_style(
-			'rim-datatables',
-			'https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css',
-			array(),
-			'1.13.8'
-		);
+		$datatables_css = $vendor_dir . 'datatables.min.css';
+		if ( file_exists( $datatables_css ) ) {
+			wp_enqueue_style(
+				'rim-datatables',
+				$vendor_url . 'datatables.min.css',
+				$style_deps,
+				filemtime( $datatables_css )
+			);
+			$style_deps[] = 'rim-datatables';
+		}
 
 		$css_file = RIM_PLUGIN_DIR . 'admin/css/rim-admin.css';
 		wp_enqueue_style(
 			'rim-admin',
 			RIM_PLUGIN_URL . 'admin/css/rim-admin.css',
-			array( 'rim-tailwind', 'rim-datatables' ),
+			$style_deps,
 			file_exists( $css_file ) ? filemtime( $css_file ) : RIM_VERSION
 		);
 
-		wp_enqueue_script(
-			'rim-datatables',
-			'https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js',
-			array( 'jquery' ),
-			'1.13.8',
-			true
-		);
-
-		wp_enqueue_script(
-			'rim-alpine',
-			'https://cdn.jsdelivr.net/npm/alpinejs@3.13.10/dist/cdn.min.js',
-			array(),
-			'3.13.10',
-			true
-		);
+		$datatables_js = $vendor_dir . 'datatables.min.js';
+		if ( file_exists( $datatables_js ) ) {
+			wp_enqueue_script(
+				'rim-datatables',
+				$vendor_url . 'datatables.min.js',
+				array( 'jquery' ),
+				filemtime( $datatables_js ),
+				true
+			);
+			$script_deps[] = 'rim-datatables';
+		}
 
 		$js_file = RIM_PLUGIN_DIR . 'admin/js/rim-admin.js';
 		wp_enqueue_script(
 			'rim-admin',
 			RIM_PLUGIN_URL . 'admin/js/rim-admin.js',
-			array( 'jquery', 'rim-alpine', 'rim-datatables' ),
+			$script_deps,
 			file_exists( $js_file ) ? filemtime( $js_file ) : RIM_VERSION,
 			true
 		);
+
+		$alpine_js = $vendor_dir . 'alpine.min.js';
+		if ( file_exists( $alpine_js ) ) {
+			wp_enqueue_script(
+				'rim-alpine',
+				$vendor_url . 'alpine.min.js',
+				array( 'rim-admin' ),
+				filemtime( $alpine_js ),
+				true
+			);
+		}
 
 		wp_localize_script(
 			'rim-admin',
@@ -177,20 +180,6 @@ class RIM_Admin {
 				),
 			)
 		);
-	}
-
-	/**
-	 * Checks if hook belongs to plugin.
-	 *
-	 * @param string $hook Hook suffix.
-	 * @return bool
-	 */
-	protected function is_plugin_screen( $hook ) {
-		if ( empty( $this->page_hooks ) ) {
-			return false;
-		}
-
-		return in_array( $hook, $this->page_hooks, true );
 	}
 
 	/**

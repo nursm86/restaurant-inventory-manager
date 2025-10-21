@@ -35,7 +35,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	</div>
 
 	<!-- Material Modal -->
-	<div class="rim-modal" x-show="showModal" x-cloak>
+	<div class="rim-modal" x-ref="materialModal" x-bind:class="{ 'is-visible': showModal }" x-cloak>
 		<div class="rim-modal__overlay" x-on:click="closeModal"></div>
 		<div class="rim-modal__content" role="dialog" aria-modal="true" aria-labelledby="rim-material-modal-title">
 			<div class="rim-modal__header">

@@ -163,13 +163,11 @@
 	z-index: 10000;
 }
 
-.rim-modal[x-cloak],
-.rim-modal[style*="display: none"] {
+.rim-modal[x-cloak] {
 	display: none !important;
 }
 
-.rim-modal[x-show="true"],
-.rim-modal[style*="display: block"] {
+.rim-modal.is-visible {
 	display: flex !important;
 }
 
